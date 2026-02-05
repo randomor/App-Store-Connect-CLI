@@ -100,13 +100,26 @@ func resolveOutputPath(path string) (string, string, error) {
 		if err != nil {
 			return "", "", err
 		}
+		targetPath := ""
+		linkBase := ""
 		if info, err := os.Stat(abs); err == nil && info.IsDir() {
-			return filepath.Join(abs, ascReferenceFile), abs, nil
+			targetPath = filepath.Join(abs, ascReferenceFile)
+			linkBase = abs
+		} else if looksLikeMarkdown(abs) {
+			targetPath = abs
+			linkBase = filepath.Dir(abs)
+		} else {
+			targetPath = filepath.Join(abs, ascReferenceFile)
+			linkBase = abs
 		}
-		if looksLikeMarkdown(abs) {
-			return abs, filepath.Dir(abs), nil
+		root, err := findRepoRoot(linkBase)
+		if err != nil {
+			return "", "", err
 		}
-		return filepath.Join(abs, ascReferenceFile), abs, nil
+		if root == "" {
+			root = linkBase
+		}
+		return targetPath, root, nil
 	}
 
 	cwd, err := os.Getwd()
