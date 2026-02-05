@@ -102,9 +102,18 @@ func resolveOutputPath(path string) (string, string, error) {
 		}
 		targetPath := ""
 		linkBase := ""
-		if info, err := os.Stat(abs); err == nil && info.IsDir() {
-			targetPath = filepath.Join(abs, ascReferenceFile)
-			linkBase = abs
+		if info, err := os.Stat(abs); err == nil {
+			if info.IsDir() {
+				targetPath = filepath.Join(abs, ascReferenceFile)
+				linkBase = abs
+			} else if looksLikeMarkdown(abs) {
+				targetPath = abs
+				linkBase = filepath.Dir(abs)
+			} else {
+				return "", "", fmt.Errorf("%s is not a directory or markdown file", abs)
+			}
+		} else if !os.IsNotExist(err) {
+			return "", "", err
 		} else if looksLikeMarkdown(abs) {
 			targetPath = abs
 			linkBase = filepath.Dir(abs)
