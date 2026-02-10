@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -60,5 +61,61 @@ func TestInitReference_ReturnsTypedErrorWhenASCExists(t *testing.T) {
 	_, err := InitReference(InitOptions{Path: repo, Force: false, Link: false})
 	if !errors.Is(err, ErrASCReferenceExists) {
 		t.Fatalf("expected ErrASCReferenceExists, got %v", err)
+	}
+}
+
+func TestUpdateAgentsLink_RewritesLegacyReference(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "AGENTS.md")
+	legacy := "# AGENTS\n\n## ASC CLI Reference\n\nSee `ASC.md` for the command catalog and workflows.\n"
+	if err := os.WriteFile(path, []byte(legacy), 0o644); err != nil {
+		t.Fatalf("write AGENTS.md: %v", err)
+	}
+
+	updated, err := updateAgentsLink(path, "subdir/ASC.md")
+	if err != nil {
+		t.Fatalf("updateAgentsLink error: %v", err)
+	}
+	if !updated {
+		t.Fatal("expected updateAgentsLink to update legacy reference")
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read AGENTS.md: %v", err)
+	}
+	content := string(data)
+	if !strings.Contains(content, "See `subdir/ASC.md` for the command catalog and workflows.") {
+		t.Fatalf("expected rewritten reference, got %q", content)
+	}
+	if strings.Contains(content, "See `ASC.md` for the command catalog and workflows.") {
+		t.Fatalf("expected legacy reference removed, got %q", content)
+	}
+}
+
+func TestUpdateClaudeLink_RewritesLegacyReference(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "CLAUDE.md")
+	legacy := "@Agents.md\n@ASC.md\n"
+	if err := os.WriteFile(path, []byte(legacy), 0o644); err != nil {
+		t.Fatalf("write CLAUDE.md: %v", err)
+	}
+
+	updated, err := updateClaudeLink(path, "subdir/ASC.md")
+	if err != nil {
+		t.Fatalf("updateClaudeLink error: %v", err)
+	}
+	if !updated {
+		t.Fatal("expected updateClaudeLink to update legacy reference")
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read CLAUDE.md: %v", err)
+	}
+	content := string(data)
+	if !strings.Contains(content, "@subdir/ASC.md") {
+		t.Fatalf("expected rewritten directive, got %q", content)
+	}
+	if strings.Contains(content, "@ASC.md") {
+		t.Fatalf("expected legacy directive removed, got %q", content)
 	}
 }

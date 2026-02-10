@@ -91,6 +91,7 @@ func InitReference(opts InitOptions) (InitResult, error) {
 		if err != nil {
 			relRef = ascReferenceFile
 		}
+		relRef = normalizeReferencePath(relRef)
 		linked, err = linkAgentFiles(linkRoot, relRef)
 		if err != nil {
 			return InitResult{}, err
@@ -175,6 +176,14 @@ func hasFileExtension(path string) bool {
 
 func isASCReferencePath(path string) bool {
 	return strings.EqualFold(filepath.Base(path), ascReferenceFile)
+}
+
+func normalizeReferencePath(path string) string {
+	trimmed := strings.TrimSpace(filepath.ToSlash(path))
+	if trimmed == "" || trimmed == "." {
+		return ascReferenceFile
+	}
+	return trimmed
 }
 
 func findRepoRoot(start string) (string, error) {
@@ -274,13 +283,36 @@ func updateAgentsLink(path string, relRef string) (bool, error) {
 		return false, err
 	}
 
-	content := string(data)
-	if strings.Contains(content, ascReferenceFile) {
-		return false, nil
+	desiredLine := fmt.Sprintf("See `%s` for the command catalog and workflows.", relRef)
+
+	lines := strings.Split(string(data), "\n")
+	foundReference := false
+	changed := false
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if !isAgentsReferenceLine(trimmed) {
+			continue
+		}
+		if foundReference {
+			lines[i] = ""
+			changed = true
+			continue
+		}
+		foundReference = true
+		if line != desiredLine {
+			lines[i] = desiredLine
+			changed = true
+		}
+	}
+	if foundReference {
+		if !changed {
+			return false, nil
+		}
+		return writeIfChanged(path, strings.Join(lines, "\n"))
 	}
 
-	section := fmt.Sprintf("## ASC CLI Reference\n\nSee `%s` for the command catalog and workflows.", relRef)
-	updated := appendSection(content, section)
+	section := fmt.Sprintf("## ASC CLI Reference\n\n%s", desiredLine)
+	updated := appendSection(string(data), section)
 	return writeIfChanged(path, updated)
 }
 
@@ -293,18 +325,55 @@ func updateClaudeLink(path string, relRef string) (bool, error) {
 		return false, err
 	}
 
-	content := string(data)
-	if strings.Contains(content, "@"+ascReferenceFile) {
-		return false, nil
+	desiredLine := "@" + relRef
+
+	lines := strings.Split(string(data), "\n")
+	updatedLines := make([]string, 0, len(lines))
+	foundReference := false
+	changed := false
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if !isASCReferenceDirective(trimmed) {
+			updatedLines = append(updatedLines, line)
+			continue
+		}
+		if foundReference {
+			changed = true
+			continue
+		}
+		foundReference = true
+		if line != desiredLine {
+			changed = true
+		}
+		updatedLines = append(updatedLines, desiredLine)
+	}
+	if foundReference {
+		if !changed {
+			return false, nil
+		}
+		return writeIfChanged(path, strings.Join(updatedLines, "\n"))
 	}
 
-	updated := strings.TrimRight(content, "\n")
+	updated := strings.TrimRight(string(data), "\n")
 	if updated != "" {
 		updated += "\n"
 	}
-	updated += "@" + relRef + "\n"
+	updated += desiredLine + "\n"
 
 	return writeIfChanged(path, updated)
+}
+
+func isAgentsReferenceLine(line string) bool {
+	return strings.HasPrefix(line, "See `") &&
+		strings.HasSuffix(line, "` for the command catalog and workflows.")
+}
+
+func isASCReferenceDirective(line string) bool {
+	if !strings.HasPrefix(line, "@") {
+		return false
+	}
+	ref := strings.TrimSpace(strings.TrimPrefix(line, "@"))
+	return strings.EqualFold(filepath.Base(ref), ascReferenceFile)
 }
 
 func appendSection(content, section string) string {
