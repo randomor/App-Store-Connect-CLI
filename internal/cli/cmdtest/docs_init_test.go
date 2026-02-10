@@ -3,10 +3,13 @@ package cmdtest
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/rudrankriyam/App-Store-Connect-CLI/internal/cli/docs"
 )
 
 func TestDocsInitCreatesReferenceAndLinks(t *testing.T) {
@@ -164,8 +167,8 @@ func runInitRequiresForceToOverwrite(t *testing.T, args []string) {
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
-		if !strings.Contains(err.Error(), "already exists") {
-			t.Fatalf("expected overwrite error, got %v", err)
+		if !errors.Is(err, docs.ErrASCReferenceExists) {
+			t.Fatalf("expected ErrASCReferenceExists, got %v", err)
 		}
 	})
 
@@ -174,6 +177,81 @@ func runInitRequiresForceToOverwrite(t *testing.T, args []string) {
 	}
 	if stderr != "" {
 		t.Fatalf("expected empty stderr, got %q", stderr)
+	}
+}
+
+func TestInitCommandsRejectInvalidOutputPath(t *testing.T) {
+	testCases := []struct {
+		name        string
+		args        []string
+		precreateMD bool
+	}{
+		{
+			name:        "docs init rejects existing non-ASC markdown path",
+			args:        []string{"docs", "init", "--path", "README.md", "--force"},
+			precreateMD: true,
+		},
+		{
+			name:        "init rejects existing non-ASC markdown path",
+			args:        []string{"init", "--path", "README.md", "--force"},
+			precreateMD: true,
+		},
+		{
+			name: "docs init rejects non-markdown file-like path",
+			args: []string{"docs", "init", "--path", "notes.txt"},
+		},
+		{
+			name: "init rejects non-markdown file-like path",
+			args: []string{"init", "--path", "notes.txt"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := RootCommand("1.2.3")
+
+			tempDir := t.TempDir()
+			repoRoot := filepath.Join(tempDir, "repo")
+			if err := os.MkdirAll(filepath.Join(repoRoot, ".git"), 0o755); err != nil {
+				t.Fatalf("create repo root error: %v", err)
+			}
+			if tc.precreateMD {
+				if err := os.WriteFile(filepath.Join(repoRoot, "README.md"), []byte("# Existing\n"), 0o644); err != nil {
+					t.Fatalf("write README.md error: %v", err)
+				}
+			}
+
+			originalWD, err := os.Getwd()
+			if err != nil {
+				t.Fatalf("get working dir error: %v", err)
+			}
+			defer func() {
+				_ = os.Chdir(originalWD)
+			}()
+			if err := os.Chdir(repoRoot); err != nil {
+				t.Fatalf("chdir error: %v", err)
+			}
+
+			stdout, stderr := captureOutput(t, func() {
+				if err := root.Parse(tc.args); err != nil {
+					t.Fatalf("parse error: %v", err)
+				}
+				err := root.Run(context.Background())
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				if !errors.Is(err, docs.ErrInvalidASCReferencePath) {
+					t.Fatalf("expected ErrInvalidASCReferencePath, got %v", err)
+				}
+			})
+
+			if stdout != "" {
+				t.Fatalf("expected empty stdout, got %q", stdout)
+			}
+			if stderr != "" {
+				t.Fatalf("expected empty stderr, got %q", stderr)
+			}
+		})
 	}
 }
 

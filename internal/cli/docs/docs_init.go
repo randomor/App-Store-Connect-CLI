@@ -2,6 +2,7 @@ package docs
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -15,6 +16,13 @@ import (
 )
 
 const ascReferenceFile = "ASC.md"
+
+var (
+	// ErrASCReferenceExists indicates ASC.md already exists and --force was not set.
+	ErrASCReferenceExists = errors.New("ASC.md already exists")
+	// ErrInvalidASCReferencePath indicates --path does not target ASC.md or a directory.
+	ErrInvalidASCReferencePath = errors.New("path must target ASC.md or a directory")
+)
 
 // InitOptions controls ASC reference generation.
 type InitOptions struct {
@@ -107,14 +115,20 @@ func resolveOutputPath(path string) (string, string, error) {
 				targetPath = filepath.Join(abs, ascReferenceFile)
 				linkBase = abs
 			} else if looksLikeMarkdown(abs) {
+				if !isASCReferencePath(abs) {
+					return "", "", fmt.Errorf("%w: %s", ErrInvalidASCReferencePath, abs)
+				}
 				targetPath = abs
 				linkBase = filepath.Dir(abs)
 			} else {
-				return "", "", fmt.Errorf("%s is not a directory or markdown file", abs)
+				return "", "", fmt.Errorf("%w: %s is not a directory or markdown file", ErrInvalidASCReferencePath, abs)
 			}
 		} else if !os.IsNotExist(err) {
 			return "", "", err
-		} else if looksLikeMarkdown(abs) {
+		} else if looksLikeMarkdown(abs) || hasFileExtension(abs) {
+			if !isASCReferencePath(abs) {
+				return "", "", fmt.Errorf("%w: %s", ErrInvalidASCReferencePath, abs)
+			}
 			targetPath = abs
 			linkBase = filepath.Dir(abs)
 		} else {
@@ -151,6 +165,14 @@ func looksLikeMarkdown(path string) bool {
 	return strings.HasSuffix(strings.ToLower(base), ".md")
 }
 
+func hasFileExtension(path string) bool {
+	return filepath.Ext(filepath.Base(path)) != ""
+}
+
+func isASCReferencePath(path string) bool {
+	return strings.EqualFold(filepath.Base(path), ascReferenceFile)
+}
+
 func findRepoRoot(start string) (string, error) {
 	dir := start
 	for {
@@ -180,7 +202,7 @@ func writeASCReference(path string, force bool) (bool, bool, error) {
 	}
 
 	if exists && !force {
-		return false, false, fmt.Errorf("%s already exists (use --force to overwrite)", path)
+		return false, false, fmt.Errorf("%w: %s (use --force to overwrite)", ErrASCReferenceExists, path)
 	}
 
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
