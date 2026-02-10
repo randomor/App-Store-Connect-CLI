@@ -87,7 +87,11 @@ func InitReference(opts InitOptions) (InitResult, error) {
 
 	linked := []string{}
 	if opts.Link {
-		linked, err = linkAgentFiles(linkRoot)
+		relRef, err := filepath.Rel(linkRoot, targetPath)
+		if err != nil {
+			relRef = ascReferenceFile
+		}
+		linked, err = linkAgentFiles(linkRoot, relRef)
 		if err != nil {
 			return InitResult{}, err
 		}
@@ -224,14 +228,14 @@ func writeASCReference(path string, force bool) (bool, bool, error) {
 	return true, false, nil
 }
 
-func linkAgentFiles(root string) ([]string, error) {
+func linkAgentFiles(root string, relRef string) ([]string, error) {
 	linked := []string{}
 
 	agentsPath := filepath.Join(root, "AGENTS.md")
 	if !fileExists(agentsPath) {
 		agentsPath = filepath.Join(root, "Agents.md")
 	}
-	agentsUpdated, err := updateAgentsLink(agentsPath)
+	agentsUpdated, err := updateAgentsLink(agentsPath, relRef)
 	if err != nil {
 		return nil, err
 	}
@@ -240,7 +244,7 @@ func linkAgentFiles(root string) ([]string, error) {
 	}
 
 	claudePath := filepath.Join(root, "CLAUDE.md")
-	claudeUpdated, err := updateClaudeLink(claudePath)
+	claudeUpdated, err := updateClaudeLink(claudePath, relRef)
 	if err != nil {
 		return nil, err
 	}
@@ -261,7 +265,7 @@ func fileExists(path string) bool {
 	return false
 }
 
-func updateAgentsLink(path string) (bool, error) {
+func updateAgentsLink(path string, relRef string) (bool, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -275,12 +279,12 @@ func updateAgentsLink(path string) (bool, error) {
 		return false, nil
 	}
 
-	section := "## ASC CLI Reference\n\nSee `ASC.md` for the command catalog and workflows."
+	section := fmt.Sprintf("## ASC CLI Reference\n\nSee `%s` for the command catalog and workflows.", relRef)
 	updated := appendSection(content, section)
 	return writeIfChanged(path, updated)
 }
 
-func updateClaudeLink(path string) (bool, error) {
+func updateClaudeLink(path string, relRef string) (bool, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -298,7 +302,7 @@ func updateClaudeLink(path string) (bool, error) {
 	if updated != "" {
 		updated += "\n"
 	}
-	updated += "@" + ascReferenceFile + "\n"
+	updated += "@" + relRef + "\n"
 
 	return writeIfChanged(path, updated)
 }
