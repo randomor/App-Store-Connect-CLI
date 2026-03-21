@@ -1,7 +1,7 @@
 {
   "date": "2026-03-21",
-  "timestamp": "2026-03-21T00:00:38.306738+00:00",
-  "stars": 3056,
+  "timestamp": "2026-03-21T23:59:54.141780+00:00",
+  "stars": 3107,
   "today": {
     "views": 0,
     "views_uniques": 0,
@@ -14,19 +14,81 @@
     "referrers": {},
     "paths": {}
   },
-  "total_downloads": 8187,
+  "total_downloads": 8260,
   "releases": [
+    {
+      "tag": "0.45.1",
+      "published_at": "2026-03-21T14:56:19Z",
+      "assets": [
+        {
+          "name": "asc_0.45.1_checksums.txt",
+          "download_count": 20
+        },
+        {
+          "name": "asc_0.45.1_linux_amd64",
+          "download_count": 5
+        },
+        {
+          "name": "asc_0.45.1_linux_arm64",
+          "download_count": 1
+        },
+        {
+          "name": "asc_0.45.1_macOS_amd64",
+          "download_count": 0
+        },
+        {
+          "name": "asc_0.45.1_macOS_arm64",
+          "download_count": 23
+        },
+        {
+          "name": "asc_0.45.1_windows_amd64.exe",
+          "download_count": 0
+        }
+      ],
+      "total_downloads": 49
+    },
+    {
+      "tag": "0.45.0",
+      "published_at": "2026-03-21T08:51:56Z",
+      "assets": [
+        {
+          "name": "asc_0.45.0_checksums.txt",
+          "download_count": 4
+        },
+        {
+          "name": "asc_0.45.0_linux_amd64",
+          "download_count": 2
+        },
+        {
+          "name": "asc_0.45.0_linux_arm64",
+          "download_count": 0
+        },
+        {
+          "name": "asc_0.45.0_macOS_amd64",
+          "download_count": 0
+        },
+        {
+          "name": "asc_0.45.0_macOS_arm64",
+          "download_count": 4
+        },
+        {
+          "name": "asc_0.45.0_windows_amd64.exe",
+          "download_count": 0
+        }
+      ],
+      "total_downloads": 10
+    },
     {
       "tag": "0.44.2",
       "published_at": "2026-03-20T06:54:57Z",
       "assets": [
         {
           "name": "asc_0.44.2_checksums.txt",
-          "download_count": 4
+          "download_count": 10
         },
         {
           "name": "asc_0.44.2_linux_amd64",
-          "download_count": 3
+          "download_count": 5
         },
         {
           "name": "asc_0.44.2_linux_arm64",
@@ -38,14 +100,14 @@
         },
         {
           "name": "asc_0.44.2_macOS_arm64",
-          "download_count": 13
+          "download_count": 19
         },
         {
           "name": "asc_0.44.2_windows_amd64.exe",
           "download_count": 0
         }
       ],
-      "total_downloads": 21
+      "total_downloads": 35
     },
     {
       "tag": "0.44.1",
